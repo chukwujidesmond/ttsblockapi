@@ -1,0 +1,69 @@
+<?php
+
+namespace App\Jobs;
+
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Queue\Queueable;
+use App\Services\AudioCleanerService;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Storage;
+
+class CleanAudioJob implements ShouldQueue
+{
+    use Dispatchable, InteractsWithQueue, Queueable;
+
+    /**
+     * Create a new job instance.
+     */
+    
+
+    public int $timeout = 600;
+    public int $tries   = 2;
+
+    public function __construct(
+        private string $jobId,
+        private string $rawPath,
+        private array  $options = []
+    ) {}
+
+    /**
+     * Execute the job.
+     */
+    public function handle(AudioCleanerService $cleaner): void
+    {
+        try {
+            // Reconstruct an UploadedFile-compatible temp file
+            $tmpFile = tmpfile();
+            fwrite($tmpFile, Storage::get($this->rawPath));
+            $tmpPath = stream_get_meta_data($tmpFile)['uri'];
+
+            $uploadedFile = new \Illuminate\Http\File($tmpPath);
+
+            $response = \Illuminate\Support\Facades\Http::timeout(300)
+                ->withHeaders(['X-Api-Secret' => config('services.audio_cleaner.secret')])
+                ->attach('file', Storage::get($this->rawPath), basename($this->rawPath))
+                ->post(config('services.audio_cleaner.url') . '/clean', $this->options);
+
+            if ($response->failed()) {
+                throw new \RuntimeException($response->body());
+            }
+
+            $cleanedPath = "audio/cleaned/{$this->jobId}_clean.wav";
+            Storage::put($cleanedPath, $response->body());
+
+            Cache::put("audio:{$this->jobId}", [
+                'status'       => 'done',
+                'download_url' => Storage::url($cleanedPath),
+                'model_used'   => $response->header('X-Processing-Model'),
+            ], now()->addDay());
+
+        } catch (\Throwable $e) {
+            Cache::put("audio:{$this->jobId}", [
+                'status' => 'failed',
+                'error'  => $e->getMessage(),
+            ], now()->addHours(2));
+        }
+    }
+}
