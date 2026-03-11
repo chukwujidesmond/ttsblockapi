@@ -15,7 +15,5 @@ Route::post('login', [LoginController::class, 'login']);
 Route::post('register', [RegisterController::class, 'register']);
 Route::post('logout', [LoginController::class, 'logout'])->middleware('auth:sanctum');
 
-Route::middleware('auth:sanctum')->group(function () {
-    Route::post('/speech/generate',      [SpeechController::class, 'generateAudio']);
-    Route::post('/speech/generate-json', [SpeechController::class, 'generateAudioJson']);
-});
+Route::post('/speech/generate',      [SpeechController::class, 'generateAudio']);
+Route::post('/speech/generate-json', [SpeechController::class, 'generateAudioJson']);
