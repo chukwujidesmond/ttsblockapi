@@ -10,6 +10,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
+use App\Models\VoiceOVer;
 
 class SpeechController  extends Controller
 {
@@ -29,6 +31,52 @@ class SpeechController  extends Controller
     public function __construct(protected GeminiTTSService $ttsService)
     {
         $this->middleware('auth:sanctum');
+    }
+
+    public function createVoiceOver(Request $request){
+
+        try {
+            $request->validate([
+                'title' => 'required|string|max:255',
+                // 'script' => 'nullable|string',
+                // 'type' => 'required|string|in:short,medium,long',
+            ]);
+
+            $user = Auth::user();
+            $voiceOver = new VoiceOVer();
+            $voiceOver->user_id = $user->id;
+            $voiceOver->title = $request->input('title');
+            $voiceOver->slug = Str::random(30);
+            $voiceOver->type = 'voice_over';
+            $voiceOver->status = 'draft';
+            $voiceOver->save();
+
+            return response()->json([
+                'success' => true,
+                'voice_over' => $voiceOver
+            ]);
+            
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json(['success' => false, 'errors' => $e->errors()], 422);
+        }
+       
+    }
+
+    public function getVoiceOver($slug){
+        try {
+            if (!$slug) {
+                return response()->json(['success' => false, 'error' => 'Slug is required'], 400);
+            }
+            $voiceOver = VoiceOVer::where('slug', $slug)->firstOrFail();
+           
+            return response()->json([
+                'success' => true,
+                'voice_over' => $voiceOver
+            ]);
+
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json(['success' => false, 'error' => 'Voice over not found'], 404);
+        }
     }
     /**
      * Generate audio and download it
@@ -80,7 +128,7 @@ class SpeechController  extends Controller
         try {
             $base64 = $this->ttsService->generateBase64(
                 text:      $request->input('text'),
-                prompt:    $request->input('prompt', ''),
+                prompt:    $request->input('prompt', 'Read aloud in a clear and natural tone.'),
                 voiceName: $request->input('voice', 'Achernar'),
             );
 
@@ -100,7 +148,7 @@ class SpeechController  extends Controller
         }
     }
 
-    public function voices()
+    public function listVoice()
     {
         return response()->json([
             'success' => true,
