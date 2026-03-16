@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\SpeechController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\RegisterController;
+use App\Http\Controllers\DashboardController;
 
 
 // Route::get('/user', function (Request $request) {
@@ -15,5 +16,7 @@ Route::post('login', [LoginController::class, 'login']);
 Route::post('register', [RegisterController::class, 'register']);
 Route::post('logout', [LoginController::class, 'logout'])->middleware('auth:sanctum');
 
+Route::get('/dashboard', [DashboardController::class, 'index']);
 Route::post('/speech/generate',      [SpeechController::class, 'generateAudio']);
 Route::post('/speech/generate-json', [SpeechController::class, 'generateAudioJson']);
+Route::post('/speech/process-transcription', [SpeechController::class, 'processAudioTranscription']);
