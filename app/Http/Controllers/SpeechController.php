@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use App\Jobs\ProcessAudioMix;
+use App\Jobs\ProcessAudioTranscription;
 use App\Models\VoiceOVer;
 
 class SpeechController  extends Controller
@@ -158,182 +159,248 @@ class SpeechController  extends Controller
         ]);
     }
 
+    // public function processAudioTranscription(Request $request)
+    // {
+    //     try {
+
+    //         if (!$request->hasFile('audio_file')) {
+    //             return response()->json([
+    //                 'status' => 'error',
+    //                 'message' => 'Audio not found'
+    //             ], 400);
+    //         }
+
+    //         $file = $request->file('audio_file');
+
+    //         $validExtensions = ['mp3','wav','mpeg'];
+
+    //         if (!in_array(strtolower($file->getClientOriginalExtension()), $validExtensions)) {
+    //             return response()->json([
+    //                 'status' => 'error',
+    //                 'message' => 'Unsupported audio format'
+    //             ]);
+    //         }
+
+    //         /*
+    //         |--------------------------------------------------------------------------
+    //         | Save file locally
+    //         |--------------------------------------------------------------------------
+    //         */
+
+    //         $fileName = time().'_'.$file->getClientOriginalName();
+    //         $destinationPath = storage_path('app/audios');
+
+    //         if (!file_exists($destinationPath)) {
+    //             mkdir($destinationPath,0755,true);
+    //         }
+
+    //         $file->move($destinationPath,$fileName);
+
+    //         $localPath = $destinationPath.'/'.$fileName;
+
+    //         /*
+    //         |--------------------------------------------------------------------------
+    //         | Upload to S3
+    //         |--------------------------------------------------------------------------
+    //         */
+
+    //         $bucket = env('AWS_BUCKET');
+    //         $region = env('AWS_DEFAULT_REGION');
+
+    //         $s3 = new S3Client([
+    //             'version' => 'latest',
+    //             'region' => $region,
+    //             'credentials' => [
+    //                 'key' => env('AWS_ACCESS_KEY_ID'),
+    //                 'secret' => env('AWS_SECRET_ACCESS_KEY')
+    //             ]
+    //         ]);
+
+    //         $key = 'transcriptions/'.$fileName;
+
+    //         $s3->putObject([
+    //             'Bucket' => $bucket,
+    //             'Key' => $key,
+    //             'Body' => fopen($localPath,'r'),
+    //             'ACL' => 'private'
+    //         ]);
+
+    //         /*
+    //         |--------------------------------------------------------------------------
+    //         | Start Transcription
+    //         |--------------------------------------------------------------------------
+    //         */
+
+    //         $transcribe = new TranscribeServiceClient([
+    //             'version' => 'latest',
+    //             'region' => $region,
+    //             'credentials' => [
+    //                 'key' => env('AWS_ACCESS_KEY_ID'),
+    //                 'secret' => env('AWS_SECRET_ACCESS_KEY')
+    //             ]
+    //         ]);
+
+    //         $jobName = 'transcription_'.uniqid();
+
+    //         $transcribe->startTranscriptionJob([
+    //             'TranscriptionJobName' => $jobName,
+    //             'LanguageCode' => 'en-US',
+    //             'Media' => [
+    //                 'MediaFileUri' => "s3://{$bucket}/{$key}"
+    //             ]
+    //         ]);
+
+    //         /*
+    //         |--------------------------------------------------------------------------
+    //         | Wait for transcription result
+    //         |--------------------------------------------------------------------------
+    //         */
+
+    //         $attempt = 0;
+    //         $maxAttempts = 60;
+
+    //         do {
+
+    //             sleep(5);
+
+    //             $result = $transcribe->getTranscriptionJob([
+    //                 'TranscriptionJobName' => $jobName
+    //             ]);
+
+    //             $status = $result['TranscriptionJob']['TranscriptionJobStatus'];
+
+    //             if ($status == 'COMPLETED') {
+    //                 break;
+    //             }
+
+    //             if ($status == 'FAILED') {
+    //                 throw new \Exception('Transcription failed');
+    //             }
+
+    //             $attempt++;
+
+    //         } while ($attempt < $maxAttempts);
+
+    //         /*
+    //         |--------------------------------------------------------------------------
+    //         | Fetch transcript JSON
+    //         |--------------------------------------------------------------------------
+    //         */
+
+    //         $transcriptUrl = $result['TranscriptionJob']['Transcript']['TranscriptFileUri'];
+
+    //         $client = new Client();
+    //         $response = $client->get($transcriptUrl);
+
+    //         $data = json_decode($response->getBody()->getContents(),true);
+
+    //         $text = $data['results']['transcripts'][0]['transcript'] ?? '';
+
+    //         /*
+    //         |--------------------------------------------------------------------------
+    //         | Save in database
+    //         |--------------------------------------------------------------------------
+    //         */
+
+    //         // $transcription = new AudioTranscriptionModel();
+    //         // $transcription->user_id = Auth::id();
+    //         // $transcription->title = 'Audio Transcription';
+    //         // $transcription->transcription = $text;
+    //         // $transcription->slug = Str::random(30);
+    //         // $transcription->save();
+           
+    //         /*
+    //         |--------------------------------------------------------------------------
+    //         | Cleanup S3 file
+    //         |--------------------------------------------------------------------------
+    //         */
+
+    //         $s3->deleteObject([
+    //             'Bucket' => $bucket,
+    //             'Key' => $key
+    //         ]);
+
+    //         return response()->json([
+    //             'status' => 'success',
+    //             'text' => $text,
+    //             // 'url' => route('user.audio.to.text.editor',$transcription->slug)
+    //         ]);
+
+    //     } catch (\Exception $e) {
+
+    //         Log::error($e->getMessage());
+
+    //         return response()->json([
+    //             'status' => 'error',
+    //             'message' => 'Transcription failed'
+    //         ],500);
+    //     }
+    // }
+
     public function processAudioTranscription(Request $request)
     {
-        try {
-
-            if (!$request->hasFile('audio_file')) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'Audio not found'
-                ], 400);
-            }
-
-            $file = $request->file('audio_file');
-
-            $validExtensions = ['mp3','wav','mpeg'];
-
-            if (!in_array(strtolower($file->getClientOriginalExtension()), $validExtensions)) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'Unsupported audio format'
-                ]);
-            }
-
-            /*
-            |--------------------------------------------------------------------------
-            | Save file locally
-            |--------------------------------------------------------------------------
-            */
-
-            $fileName = time().'_'.$file->getClientOriginalName();
-            $destinationPath = storage_path('app/audios');
-
-            if (!file_exists($destinationPath)) {
-                mkdir($destinationPath,0755,true);
-            }
-
-            $file->move($destinationPath,$fileName);
-
-            $localPath = $destinationPath.'/'.$fileName;
-
-            /*
-            |--------------------------------------------------------------------------
-            | Upload to S3
-            |--------------------------------------------------------------------------
-            */
-
-            $bucket = env('AWS_BUCKET');
-            $region = env('AWS_DEFAULT_REGION');
-
-            $s3 = new S3Client([
-                'version' => 'latest',
-                'region' => $region,
-                'credentials' => [
-                    'key' => env('AWS_ACCESS_KEY_ID'),
-                    'secret' => env('AWS_SECRET_ACCESS_KEY')
-                ]
-            ]);
-
-            $key = 'transcriptions/'.$fileName;
-
-            $s3->putObject([
-                'Bucket' => $bucket,
-                'Key' => $key,
-                'Body' => fopen($localPath,'r'),
-                'ACL' => 'private'
-            ]);
-
-            /*
-            |--------------------------------------------------------------------------
-            | Start Transcription
-            |--------------------------------------------------------------------------
-            */
-
-            $transcribe = new TranscribeServiceClient([
-                'version' => 'latest',
-                'region' => $region,
-                'credentials' => [
-                    'key' => env('AWS_ACCESS_KEY_ID'),
-                    'secret' => env('AWS_SECRET_ACCESS_KEY')
-                ]
-            ]);
-
-            $jobName = 'transcription_'.uniqid();
-
-            $transcribe->startTranscriptionJob([
-                'TranscriptionJobName' => $jobName,
-                'LanguageCode' => 'en-US',
-                'Media' => [
-                    'MediaFileUri' => "s3://{$bucket}/{$key}"
-                ]
-            ]);
-
-            /*
-            |--------------------------------------------------------------------------
-            | Wait for transcription result
-            |--------------------------------------------------------------------------
-            */
-
-            $attempt = 0;
-            $maxAttempts = 60;
-
-            do {
-
-                sleep(5);
-
-                $result = $transcribe->getTranscriptionJob([
-                    'TranscriptionJobName' => $jobName
-                ]);
-
-                $status = $result['TranscriptionJob']['TranscriptionJobStatus'];
-
-                if ($status == 'COMPLETED') {
-                    break;
-                }
-
-                if ($status == 'FAILED') {
-                    throw new \Exception('Transcription failed');
-                }
-
-                $attempt++;
-
-            } while ($attempt < $maxAttempts);
-
-            /*
-            |--------------------------------------------------------------------------
-            | Fetch transcript JSON
-            |--------------------------------------------------------------------------
-            */
-
-            $transcriptUrl = $result['TranscriptionJob']['Transcript']['TranscriptFileUri'];
-
-            $client = new Client();
-            $response = $client->get($transcriptUrl);
-
-            $data = json_decode($response->getBody()->getContents(),true);
-
-            $text = $data['results']['transcripts'][0]['transcript'] ?? '';
-
-            /*
-            |--------------------------------------------------------------------------
-            | Save in database
-            |--------------------------------------------------------------------------
-            */
-
-            // $transcription = new AudioTranscriptionModel();
-            // $transcription->user_id = Auth::id();
-            // $transcription->title = 'Audio Transcription';
-            // $transcription->transcription = $text;
-            // $transcription->slug = Str::random(30);
-            // $transcription->save();
-           
-            /*
-            |--------------------------------------------------------------------------
-            | Cleanup S3 file
-            |--------------------------------------------------------------------------
-            */
-
-            $s3->deleteObject([
-                'Bucket' => $bucket,
-                'Key' => $key
-            ]);
-
+        if (!$request->hasFile('audio_file')) {
             return response()->json([
-                'status' => 'success',
-                'text' => $text,
-                // 'url' => route('user.audio.to.text.editor',$transcription->slug)
-            ]);
-
-        } catch (\Exception $e) {
-
-            Log::error($e->getMessage());
-
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Transcription failed'
-            ],500);
+                'status'  => 'error',
+                'message' => 'Audio not found'
+            ], 400);
         }
+
+        $file            = $request->file('audio_file');
+        $validExtensions = ['mp3', 'wav', 'mpeg'];
+
+        if (!in_array(strtolower($file->getClientOriginalExtension()), $validExtensions)) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Unsupported audio format'
+            ], 422);
+        }
+
+        // Save file locally before dispatching
+        $fileName        = time() . '_' . $file->getClientOriginalName();
+        $destinationPath = storage_path('app/audios');
+
+        if (!file_exists($destinationPath)) {
+            mkdir($destinationPath, 0755, true);
+        }
+
+        $file->move($destinationPath, $fileName);
+
+        $jobId = (string) Str::uuid();
+
+        cache()->put(
+            "transcription_job:{$jobId}",
+            ['status' => 'queued'],
+            now()->addHours(2)
+        );
+
+        $user = Auth::user();
+        $voiceOver = new VoiceOVer();
+        $voiceOver->user_id = $user->id;
+        $voiceOver->title = $request->input('title');
+        $voiceOver->slug = Str::random(30);
+        $voiceOver->type = 'transcription';
+        $voiceOver->status = 'draft';
+        $voiceOver->save();
+
+        ProcessAudioTranscription::dispatch($fileName, $jobId, $voiceOver->slug)
+            ->onQueue('transcription');
+
+        return response()->json([
+            'status' => 'queued',
+            'job_id' => $jobId,
+        ], 202);
+    }
+
+    public function transcriptionStatus(string $jobId)
+    {
+        $result = cache()->get("transcription_job:{$jobId}");
+
+        if (!$result) {
+            return response()->json(['status' => 'not_found'], 404);
+        }
+
+        return response()->json($result);
     }
 
     public function processAudioConvert(Request $request)

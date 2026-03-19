@@ -23,7 +23,10 @@ Route::get('/voice-over/{slug}', [SpeechController::class, 'getVoiceOver']);
 Route::get('/list-voice', [SpeechController::class, 'listVoice']);
 Route::post('/speech/generate',      [SpeechController::class, 'generateAudio']);
 Route::post('/speech/generate-json', [SpeechController::class, 'generateAudioJson']);
-Route::post('/speech/process-transcription', [SpeechController::class, 'processAudioTranscription']);
+// Route::post('/speech/process-transcription', [SpeechController::class, 'processAudioTranscription']);
+
+Route::post('/audio/transcribe',         [SpeechController::class, 'processAudioTranscription']);
+Route::get('/audio/transcribe/{jobId}',  [SpeechController::class, 'transcriptionStatus']);
 
 
 // routes/api.php
