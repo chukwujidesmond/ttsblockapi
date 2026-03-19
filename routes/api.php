@@ -24,3 +24,8 @@ Route::get('/list-voice', [SpeechController::class, 'listVoice']);
 Route::post('/speech/generate',      [SpeechController::class, 'generateAudio']);
 Route::post('/speech/generate-json', [SpeechController::class, 'generateAudioJson']);
 Route::post('/speech/process-transcription', [SpeechController::class, 'processAudioTranscription']);
+
+
+// routes/api.php
+Route::post('/audio/convert', [SpeechController::class, 'processAudioConvert']);
+Route::get('/audio/status/{jobId}', [SpeechController::class, 'jobStatus']);

@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use App\Jobs\ProcessAudioMix;
 use App\Models\VoiceOVer;
 
 class SpeechController  extends Controller
@@ -333,6 +334,50 @@ class SpeechController  extends Controller
                 'message' => 'Transcription failed'
             ],500);
         }
+    }
+
+    public function processAudioConvert(Request $request)
+    {
+        $request->validate([
+            'slug'                     => 'required|string',
+            'tracks'                   => 'required|array|min:1',
+            'tracks.*.audio'           => 'required|string',
+            'tracks.*.volume'          => 'required|numeric|min:0|max:5',
+            'tracks.*.audio_name'      => 'required|string',
+            'tracks.*.position.start'  => 'required|numeric|min:0',
+            'tracks.*.position.end'    => 'required|numeric|gt:tracks.*.position.start',
+        ]);
+
+        $jobId = (string) Str::uuid();
+
+        // Mark as queued immediately so the client can start polling
+        cache()->put(
+            "audio_job:{$jobId}",
+            ['status' => 'queued'],
+            now()->addHours(2)
+        );
+
+        ProcessAudioMix::dispatch($request->input('tracks'), $jobId, $request->slug)
+            ->onQueue('audio');
+
+        return response()->json([
+            'status' => 'queued',
+            'job_id' => $jobId,
+        ], 202);
+    }
+
+    /**
+     * Poll endpoint — returns status/url once done.
+     */
+    public function jobStatus(string $jobId)
+    {
+        $result = cache()->get("audio_job:{$jobId}");
+
+        if (!$result) {
+            return response()->json(['status' => 'not_found'], 404);
+        }
+
+        return response()->json($result);
     }
 
 }
