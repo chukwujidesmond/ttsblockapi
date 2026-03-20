@@ -68,7 +68,7 @@ class GeminiTTSService
         ];
 
         $response = Http::withHeaders(['Content-Type' => 'application/json'])
-            ->timeout(60)
+            ->timeout(220)
             ->post($this->apiUrl . '?key=' . $this->apiKey, $payload);
 
         if ($response->failed()) {
