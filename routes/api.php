@@ -30,5 +30,5 @@ Route::get('/audio/transcribe/{jobId}',  [SpeechController::class, 'transcriptio
 
 
 // routes/api.php
-Route::post('/audio/convert', [SpeechController::class, 'processAudioConvert']);
+Route::post('/save-voiceover', [SpeechController::class, 'processAudioConvert']);
 Route::get('/audio/status/{jobId}', [SpeechController::class, 'jobStatus']);
