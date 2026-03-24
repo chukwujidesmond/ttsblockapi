@@ -435,6 +435,9 @@ class SpeechController  extends Controller
             now()->addHours(2)
         );
 
+        
+         VoiceOver::where('slug', $request->slug)->update(['status' => 'processing']);
+
         ProcessAudioMix::dispatch($request->input('tracks'), $jobId, $request->slug)
             ->onQueue('audio');
 

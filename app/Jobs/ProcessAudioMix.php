@@ -135,16 +135,16 @@ class ProcessAudioMix implements ShouldQueue
             Log::info('Audio uploaded to S3', ['url' => $s3Url]);
 
             // ── 7. Update VoiceOver record ────────────────────────────────────
-            // $updated = VoiceOver::where('slug', $this->slug)
-            //     ->update([
-            //         'audio_path' => $s3Path,
-            //         'audio_url'  => $s3Url,
-            //         'status'     => 'published',
-            //     ]);
+            $updated = VoiceOver::where('slug', $this->slug)
+                ->update([
+                    'media_name' => "{$this->jobId}.mp3",
+                    'media_url'  => $s3Url,
+                    'status'     => 'completed',
+                ]);
 
-            // if (!$updated) {
-            //     throw new \RuntimeException("VoiceOver record not found for slug: {$this->slug}");
-            // }
+            if (!$updated) {
+                throw new \RuntimeException("VoiceOver record not found for slug: {$this->slug}");
+            }
 
             // ── 8. Cache the result for polling ──────────────────────────────
             cache()->put(
