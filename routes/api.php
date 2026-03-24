@@ -23,6 +23,8 @@ Route::get('/voice-over/{slug}', [SpeechController::class, 'getVoiceOver']);
 Route::get('/list-voice', [SpeechController::class, 'listVoice']);
 Route::post('/speech/generate',      [SpeechController::class, 'generateAudio']);
 Route::post('/speech/generate-json', [SpeechController::class, 'generateAudioJson']);
+
+Route::get('/list/voice-over', [SpeechController::class, 'listVoiceOver']);
 // Route::post('/speech/process-transcription', [SpeechController::class, 'processAudioTranscription']);
 
 Route::post('/audio/transcribe',         [SpeechController::class, 'processAudioTranscription']);

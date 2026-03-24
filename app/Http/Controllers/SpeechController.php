@@ -159,6 +159,17 @@ class SpeechController  extends Controller
         ]);
     }
 
+    public function listVoiceOver()
+    {
+        $user = Auth::user();
+        $voiceOvers = VoiceOVer::where('user_id', $user->id)->get();
+
+        return response()->json([
+            'success' => true,
+            'voice_overs' => $voiceOvers
+        ]);
+    }
+
     // public function processAudioTranscription(Request $request)
     // {
     //     try {
