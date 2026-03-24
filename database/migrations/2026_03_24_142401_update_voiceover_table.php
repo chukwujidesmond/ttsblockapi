@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::table('voice_over', function (Blueprint $table) {
             // Add a new column
-            $table->string('media_url')->nullable();
+            $table->string('media_url')->after('media_name')->nullable();
 
         });
     }
