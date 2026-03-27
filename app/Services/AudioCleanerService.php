@@ -31,13 +31,16 @@ class AudioCleanerService
         $originalPath = "audio/raw/{$id}." . $file->getClientOriginalExtension();
         $cleanedPath  = "audio/cleaned/{$id}_clean.wav";
 
-        // 1. Save original
-        Storage::put($originalPath, file_get_contents($file->getRealPath()));
+        // FIX 5: read the file once
+        $rawContents = file_get_contents($file->getRealPath());
 
-        // 2. Send to Python → get cleaned binary back
-        $response = Http::timeout(300)              // 5min for large files
+        // 1. Save original
+        Storage::put($originalPath, $rawContents);
+
+        // 2. Send to Python
+        $response = Http::timeout(300)
             ->withHeaders(['X-Api-Secret' => $this->secret])
-            ->attach('file', file_get_contents($file->getRealPath()), $file->getClientOriginalName())
+            ->attach('file', $rawContents, $file->getClientOriginalName())
             ->post($this->pythonUrl . '/clean', [
                 'strength' => $options['strength'] ?? 0.85,
                 'model'    => $options['model']    ?? 'deepfilter',
@@ -47,7 +50,7 @@ class AudioCleanerService
             throw new \RuntimeException('Audio cleaner failed: ' . $response->body());
         }
 
-        // 3. Store cleaned audio (response body IS the wav file)
+        // 3. Store cleaned audio
         Storage::put($cleanedPath, $response->body());
 
         return [
@@ -58,4 +61,5 @@ class AudioCleanerService
             'model_used'    => $response->header('X-Processing-Model'),
         ];
     }
+    
 }

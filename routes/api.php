@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AudioController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\SpeechController;
@@ -23,12 +24,16 @@ Route::get('/voice-over/{slug}', [SpeechController::class, 'getVoiceOver']);
 Route::get('/list-voice', [SpeechController::class, 'listVoice']);
 Route::post('/speech/generate',      [SpeechController::class, 'generateAudio']);
 Route::post('/speech/generate-json', [SpeechController::class, 'generateAudioJson']);
-
+Route::post('/delete/voice-over/{slug}', [SpeechController::class, 'deleteVoiceOver']);
+Route::get('/download/audio/{slug}', [SpeechController::class, 'downloadAudio']);
 Route::get('/list/voice-over', [SpeechController::class, 'listVoiceOver']);
+Route::get('/list/transcription', [SpeechController::class, 'listTranscription']);
 // Route::post('/speech/process-transcription', [SpeechController::class, 'processAudioTranscription']);
 
 Route::post('/audio/transcribe',         [SpeechController::class, 'processAudioTranscription']);
 Route::get('/audio/transcribe/{jobId}',  [SpeechController::class, 'transcriptionStatus']);
+Route::post('/audio-cleaning/upload',         [AudioController::class, 'uploadAsync']);
+
 
 
 // routes/api.php

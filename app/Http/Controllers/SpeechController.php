@@ -162,7 +162,7 @@ class SpeechController  extends Controller
     public function listVoiceOver()
     {
         $user = Auth::user();
-        $voiceOvers = VoiceOVer::where('user_id', $user->id)->get();
+        $voiceOvers = VoiceOVer::where('user_id', $user->id)->where('type', 'voice_over')->get();
 
         return response()->json([
             'success' => true,
@@ -414,6 +414,17 @@ class SpeechController  extends Controller
         return response()->json($result);
     }
 
+     public function listTranscription()
+    {
+        $user = Auth::user();
+        $transcriptions = VoiceOVer::where('user_id', $user->id)->where('type', 'transcription')->get();
+
+        return response()->json([
+            'success' => true,
+            'transcription' => $transcriptions
+        ]);
+    }
+
     public function processAudioConvert(Request $request)
     {
         $request->validate([
@@ -459,6 +470,87 @@ class SpeechController  extends Controller
         }
 
         return response()->json($result);
+    }
+
+    function deleteVoiceOver($slug){
+        try {
+            $voiceOver = VoiceOVer::where('slug', $slug)->firstOrFail();
+            if ($voiceOver->media_url) {
+                // If there's an associated media file, you might want to delete it from S3 here
+                $s3 = new S3Client([
+                    'version' => 'latest',
+                    'region' => env('AWS_DEFAULT_REGION'),
+                    'credentials' => [
+                        'key' => env('AWS_ACCESS_KEY_ID'),
+                        'secret' => env('AWS_SECRET_ACCESS_KEY')
+                    ]
+                ]);
+
+                $s3Key = parse_url($voiceOver->media_url, PHP_URL_PATH);
+                $s3Key = ltrim($s3Key, '/'); // Remove leading slash
+
+                try {
+                    $s3->deleteObject([
+                        'Bucket' => env('AWS_BUCKET'),
+                        'Key' => $s3Key
+                    ]);
+                } catch (\Exception $e) {
+                    Log::error("Failed to delete S3 object: {$voiceOver->media_url}", ['error' => $e->getMessage()]);
+                    // Continue with deletion even if S3 cleanup fails
+                }
+            }
+            $voiceOver->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Voice over deleted successfully'
+            ]);
+
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json(['success' => false, 'error' => 'Voice over not found'], 404);
+        }
+    }
+
+    public function downloadAudio($slug){
+        try {
+            $voiceOver = VoiceOVer::where('slug', $slug)->firstOrFail();
+
+            if (!$voiceOver->media_url) {
+                return response()->json(['success' => false, 'error' => 'No audio available for this voice over'], 404);
+            }
+
+            // Generate a temporary signed URL for the S3 object
+            $s3 = new S3Client([
+                'version' => 'latest',
+                'region' => env('AWS_DEFAULT_REGION'),
+                'credentials' => [
+                    'key' => env('AWS_ACCESS_KEY_ID'),
+                    'secret' => env('AWS_SECRET_ACCESS_KEY')
+                ]
+            ]);
+
+            $s3Key = parse_url($voiceOver->media_url, PHP_URL_PATH);
+            $s3Key = ltrim($s3Key, '/'); // Remove leading slash
+
+            $command = $s3->getCommand('GetObject', [
+                'Bucket' => env('AWS_BUCKET'),
+                'Key' => $s3Key
+            ]);
+
+            $request = $s3->createPresignedRequest($command, '+20 minutes');
+
+            $presignedUrl = (string) $request->getUri();
+
+            return response()->json([
+                'success' => true,
+                'download_url' => $presignedUrl
+            ]);
+
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json(['success' => false, 'error' => 'Voice over not found'], 404);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
+        }
     }
 
 }

@@ -34,13 +34,6 @@ class CleanAudioJob implements ShouldQueue
     public function handle(AudioCleanerService $cleaner): void
     {
         try {
-            // Reconstruct an UploadedFile-compatible temp file
-            $tmpFile = tmpfile();
-            fwrite($tmpFile, Storage::get($this->rawPath));
-            $tmpPath = stream_get_meta_data($tmpFile)['uri'];
-
-            $uploadedFile = new \Illuminate\Http\File($tmpPath);
-
             $response = \Illuminate\Support\Facades\Http::timeout(300)
                 ->withHeaders(['X-Api-Secret' => config('services.audio_cleaner.secret')])
                 ->attach('file', Storage::get($this->rawPath), basename($this->rawPath))
@@ -53,11 +46,16 @@ class CleanAudioJob implements ShouldQueue
             $cleanedPath = "audio/cleaned/{$this->jobId}_clean.wav";
             Storage::put($cleanedPath, $response->body());
 
+            // delete raw only after successful clean
+            Storage::delete($this->rawPath);
+
             Cache::put("audio:{$this->jobId}", [
                 'status'       => 'done',
                 'download_url' => Storage::url($cleanedPath),
                 'model_used'   => $response->header('X-Processing-Model'),
             ], now()->addDay());
+
+           
 
         } catch (\Throwable $e) {
             Cache::put("audio:{$this->jobId}", [

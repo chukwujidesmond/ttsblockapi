@@ -47,7 +47,7 @@ return [
     ],
 
     'audio_cleaner' => [
-        'url'    => env('AUDIO_CLEANER_URL', 'http://audio-service:8000'),
+        'url'    => env('AUDIO_CLEANER_URL', 'http://audio-service:8002'),
         'secret' => env('AUDIO_CLEANER_SECRET', 'change-me'),
     ],
 

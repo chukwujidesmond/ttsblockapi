@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Jobs\CleanAudioJob;
 use App\Services\AudioCleanerService;
+use Illuminate\Support\Facades\Storage;
 
 class AudioController extends Controller
 {
@@ -49,12 +50,12 @@ class AudioController extends Controller
         CleanAudioJob::dispatch($id, $rawPath, [
             'strength' => $request->input('strength', 0.85),
             'model'    => $request->input('model', 'deepfilter'),
-        ]);
+        ])->onQueue('audiocleaning');
 
         return response()->json([
             'message'    => 'Processing started',
             'job_id'     => $id,
-            'status_url' => route('audio.status', $id),
+            // 'status_url' => route('audio.status', $id),
         ], 202);
     }
 
