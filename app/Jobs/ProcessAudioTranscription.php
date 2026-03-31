@@ -33,6 +33,15 @@ class ProcessAudioTranscription implements ShouldQueue
 
         $bucket = config('services.aws.bucket');
         $region = config('services.aws.region');
+
+        if (empty($region)) {
+        throw new \RuntimeException('AWS region is not configured.');
+        }
+        
+        if (empty($bucket)) {
+            throw new \RuntimeException('AWS bucket is not configured.');
+        }
+
         $key    = "transcriptions/{$this->fileName}";
 
         $credentials = [
