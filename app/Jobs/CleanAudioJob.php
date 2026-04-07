@@ -9,6 +9,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
+use App\Models\NoiseRemover;
 
 class CleanAudioJob implements ShouldQueue
 {
@@ -44,10 +45,20 @@ class CleanAudioJob implements ShouldQueue
             }
 
             $cleanedPath = "audio/cleaned/{$this->jobId}_clean.wav";
-            Storage::put($cleanedPath, $response->body());
+            // Storage::put($cleanedPath, $response->body());
+             Storage::disk('s3')->put($cleanedPath, $response->body());
+            $s3Url = Storage::disk('s3')->url($s3Path);
 
             // delete raw only after successful clean
             Storage::delete($this->rawPath);
+
+              $updated = NoiseRemover::where('slug', $this->slug)
+                ->update([
+                    'media_name' => "{$this->jobId}.mp3",
+                    'media_url'  => $s3Url,
+                    'status'     => 'completed',
+                ]);
+
 
             Cache::put("audio:{$this->jobId}", [
                 'status'       => 'done',

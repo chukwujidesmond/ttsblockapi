@@ -391,7 +391,7 @@ class SpeechController  extends Controller
         $voiceOver->title = $request->input('title');
         $voiceOver->slug = Str::random(30);
         $voiceOver->type = 'transcription';
-        $voiceOver->status = 'draft';
+        $voiceOver->status = 'processing';
         $voiceOver->save();
 
         ProcessAudioTranscription::dispatch($fileName, $jobId, $voiceOver->slug)

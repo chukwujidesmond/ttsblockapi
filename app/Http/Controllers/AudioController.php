@@ -6,6 +6,10 @@ use Illuminate\Http\Request;
 use App\Jobs\CleanAudioJob;
 use App\Services\AudioCleanerService;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use App\Models\NoiseRemover;
+use Illuminate\Support\Facades\Auth;
+
 
 class AudioController extends Controller
 {
@@ -46,6 +50,14 @@ class AudioController extends Controller
         $rawPath  = "audio/raw/{$id}." . $file->getClientOriginalExtension();
 
         Storage::put($rawPath, file_get_contents($file->getRealPath()));
+
+        $user = Auth::user();
+        $voiceOver = new NoiseRemover();
+        $voiceOver->user_id = $user->id;
+        $voiceOver->title = $request->input('title');
+        $voiceOver->slug = Str::random(30);
+        $voiceOver->status = 'processing';
+        $voiceOver->save();
 
         CleanAudioJob::dispatch($id, $rawPath, [
             'strength' => $request->input('strength', 0.85),
