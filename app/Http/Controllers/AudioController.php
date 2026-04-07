@@ -13,6 +13,10 @@ use Illuminate\Support\Facades\Auth;
 
 class AudioController extends Controller
 {
+    public function __construct(protected AudioCleanerService $cleaner)
+    {
+        $this->middleware('auth:sanctum');
+    }
     
     // ── Option A: Synchronous (small files < 10MB) ──────────────────────────
     public function uploadSync(Request $request, AudioCleanerService $cleaner)
@@ -81,5 +85,27 @@ class AudioController extends Controller
         }
 
         return response()->json($result);
+    }
+
+    public function download(string $slug)
+    {
+        $record = NoiseRemover::where('slug', $slug)->firstOrFail();
+
+        if ($record->status !== 'completed' || !$record->media_url) {
+            return response()->json(['message' => 'Audio not ready for download'], 404);
+        }
+
+        return response()->json([
+            'download_url' => $record->media_url,
+            'media_name'   => $record->media_name,
+        ]);
+    }
+
+    public function listCleanedAudio(Request $request)
+    {
+        $user = Auth::user();
+        $records = NoiseRemover::where('user_id', $user->id)->orderBy('created_at', 'desc')->get();
+
+        return response()->json($records);
     }
 }

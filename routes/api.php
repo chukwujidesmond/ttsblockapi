@@ -32,8 +32,11 @@ Route::get('/list/transcription', [SpeechController::class, 'listTranscription']
 
 Route::post('/audio/transcribe',         [SpeechController::class, 'processAudioTranscription']);
 Route::get('/audio/transcribe/{jobId}',  [SpeechController::class, 'transcriptionStatus']);
-Route::post('/audio-cleaning/upload',         [AudioController::class, 'uploadAsync']);
 
+Route::post('/audio-cleaning/upload',         [AudioController::class, 'uploadAsync']);
+Route::get('/audio-cleaning/status/{jobId}', [AudioController::class, 'jobStatus']);
+Route::get('/audio-cleaning/download/{slug}', [AudioController::class, 'downloadCleanedAudio']);
+Route::get('/audio-cleaning/list', [AudioController::class, 'listCleanedAudio']);
 
 
 // routes/api.php
