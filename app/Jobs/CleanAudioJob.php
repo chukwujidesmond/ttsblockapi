@@ -26,6 +26,7 @@ class CleanAudioJob implements ShouldQueue
     public function __construct(
         private string $jobId,
         private string $rawPath,
+        private string $slug,
         private array  $options = []
     ) {}
 

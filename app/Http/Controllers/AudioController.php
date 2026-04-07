@@ -59,7 +59,7 @@ class AudioController extends Controller
         $voiceOver->status = 'processing';
         $voiceOver->save();
 
-        CleanAudioJob::dispatch($id, $rawPath, [
+        CleanAudioJob::dispatch($id, $rawPath, $voiceOver->slug, [
             'strength' => $request->input('strength', 0.85),
             'model'    => $request->input('model', 'deepfilter'),
         ])->onQueue('audiocleaning');
