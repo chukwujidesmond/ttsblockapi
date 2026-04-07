@@ -50,6 +50,8 @@ class CleanAudioJob implements ShouldQueue
              Storage::disk('s3')->put($cleanedPath, $response->body());
             $s3Url = Storage::disk('s3')->url($s3Path);
 
+            Log::info('Audio Cleaned to S3', ['url' => $s3Url]);
+
             // delete raw only after successful clean
             Storage::delete($this->rawPath);
 
