@@ -46,9 +46,19 @@ class CleanAudioJob implements ShouldQueue
 
             $cleanedPath = "audio/cleaned/{$this->jobId}_clean.wav";
             Storage::put($cleanedPath, $response->body());
-            Storage::disk('s3')->put($cleanedPath, $response->body(), 'private');
 
-            $s3Url = Storage::disk('s3')->url($cleanedPath);
+            $localOutput = Storage::path($cleanedPath);
+            $s3Path = "cleaned/{$this->jobId}.mp3";
+
+            Storage::disk('s3')->put(
+                $s3Path,
+                file_get_contents($localOutput),
+                'private'
+            );
+
+            @unlink($localOutput);
+
+            $s3Url = Storage::disk('s3')->url($s3Path);
 
             Log::info('Audio Cleaned to S3', ['url' => $s3Url]);
 
