@@ -8,6 +8,8 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use App\Models\NoiseRemover;
 
 class CleanAudioJob implements ShouldQueue
 {
@@ -60,17 +62,19 @@ class CleanAudioJob implements ShouldQueue
                     'status' => 'completed',
                 ]);
 
-            Cache::put("audio:{$this->jobId}", [
-                'status' => 'done',
-                'download_url' => $s3Url,
-                'model_used' => $response->header('X-Processing-Model'),
-            ], now()->addDay());
+            // Cache::put("audio:{$this->jobId}", [
+            //     'status' => 'done',
+            //     'download_url' => $s3Url,
+            //     'model_used' => $response->header('X-Processing-Model'),
+            // ], now()->addDay());
 
         } catch (\Throwable $e) {
-            Cache::put("audio:{$this->jobId}", [
-                'status' => 'failed',
-                'error' => $e->getMessage(),
-            ], now()->addHours(2));
+            $updated = NoiseRemover::where('slug', $this->slug)
+                ->update([
+                    'media_name' => "{$this->jobId}.mp3",
+                    'media_url' => $s3Url,
+                    'status' => 'failed',
+                ]);
         }
     }
 }
