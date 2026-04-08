@@ -48,12 +48,12 @@ class CleanAudioJob implements ShouldQueue
             Storage::put($cleanedPath, $response->body());
 
             $localOutput = Storage::path($cleanedPath);
-            $s3Path = "voiceovers/{$this->jobId}.mp3";
+            $s3Path = "cleaned/{$this->jobId}.mp3";
 
             Storage::disk('s3')->put(
                 $s3Path,
                 file_get_contents($localOutput),
-                'private'
+                'public'
             );
 
             @unlink($localOutput);
