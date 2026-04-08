@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Models\NoiseRemover;
 use App\Services\AudioCleanerService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -9,7 +10,6 @@ use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use App\Models\NoiseRemover;
 
 class CleanAudioJob implements ShouldQueue
 {
@@ -46,7 +46,7 @@ class CleanAudioJob implements ShouldQueue
 
             $cleanedPath = "audio/cleaned/{$this->jobId}_clean.wav";
             Storage::put($cleanedPath, $response->body());
-            Storage::disk('s3')->put($cleanedPath, $response->body());
+            Storage::disk('s3')->put($cleanedPath, $response->body(), 'private');
 
             $s3Url = Storage::disk('s3')->url($cleanedPath);
 
@@ -69,10 +69,11 @@ class CleanAudioJob implements ShouldQueue
             // ], now()->addDay());
 
         } catch (\Throwable $e) {
-            $updated = NoiseRemover::where('slug', $this->slug)
+            Log::error('Audio clean failed', ['jobId' => $this->jobId, 'error' => $e->getMessage()]);
+
+            NoiseRemover::where('slug', $this->slug)
                 ->update([
                     'media_name' => "{$this->jobId}.mp3",
-                    'media_url' => $s3Url,
                     'status' => 'failed',
                 ]);
         }
